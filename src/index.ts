@@ -1,3 +1,3 @@
-import { Add } from './Add.js';
+import { SpyMsg } from './SpyMsg.js';
 
-export { Add };
+export { SpyMsg };

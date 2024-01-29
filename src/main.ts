@@ -41,18 +41,19 @@ import {
   
   class Account extends Struct({
     publicKey: PublicKey,
-    points: UInt32,
+    msg: Field,
   }) {
     hash(): Field {
       return Poseidon.hash(Account.toFields(this));
     }
   
-    addPoints(points: number) {
+    addMsg(msg: Field) {
       return new Account({
         publicKey: this.publicKey,
-        points: this.points.add(points),
+        msg: msg,
       });
     }
+
   }
   // we need the initiate tree root in order to tell the contract about our off-chain storage
   let initialCommitment: Field = Field(0);
@@ -86,8 +87,8 @@ import {
       // we check that the account is within the committed Merkle Tree
       path.calculateRoot(account.hash()).assertEquals(commitment);
   
-      // we update the account and grant one point!
-      let newAccount = account.addPoints(1);
+      // we update the account with new msg
+      let newAccount = account.addMsg(msg);
   
       // we calculate the new Merkle Root, based on the account changes
       let newCommitment = path.calculateRoot(newAccount.hash());
@@ -116,7 +117,7 @@ import {
         name as Names,
         new Account({
           publicKey: Local.testAccounts[index].publicKey,
-          points: UInt32.from(0),
+          msg: Field(-1),
         }),
       ];
     })
@@ -153,12 +154,12 @@ import {
   await tx.prove();
   await tx.sign([feePayerKey, zkappKey]).send();
   
-  console.log('Initial points: ' + Accounts.get('Bob')?.points);
+  console.log('Initial msg: ' + Accounts.get('Bob')?.msg);
   
   console.log('inputting msg..');
   await inputMsg('Bob', 0n, 22);
   
-  console.log('Final points: ' + Accounts.get('Bob')?.points);
+  console.log('Final msg: ' + Accounts.get('Bob')?.msg);
   
   async function inputMsg(name: Names, index: bigint, msg: number) {
     let account = Accounts.get(name)!;
@@ -172,7 +173,7 @@ import {
     await tx.sign([feePayerKey, zkappKey]).send();
   
     // if the transaction was successful, we can update our off-chain storage as well
-    account.points = account.points.add(1);
+    account.msg = Field(msg);
     Tree.setLeaf(index, account.hash());
     spyMsgZkApp.commitment.get().assertEquals(Tree.getRoot());
   }
