@@ -54,35 +54,35 @@ export class SpyMsg extends SmartContract {
   
   
     // this is merkle root of our eligible list.
-    @state(Field) commitment = State<Field>();
+    @state(Field) treeroot = State<Field>();
   
     @method init() {
       super.init();
       
     }
 
-    @method initState(initialTreeRoot:Field) {
-        this.commitment.set(initialTreeRoot);
+    @method initState(initialTreeroot:Field) {
+        this.treeroot.set(initialTreeroot);
     }
   
     @method
     inputMsg(msg: Field, account: Account, path: MyMerkleWitness) {  
       this.checkMsg(msg).assertTrue();
   
-      // we fetch the on-chain commitment
-      let commitment = this.commitment.get();
-      this.commitment.requireEquals(commitment);
+      // we fetch the on-chain treeroot
+      let treeroot = this.treeroot.get();
+      this.treeroot.requireEquals(treeroot);
   
       // we check that the account is within the committed Merkle Tree
-      path.calculateRoot(account.hash()).assertEquals(commitment);
+      path.calculateRoot(account.hash()).assertEquals(treeroot);
   
       // we update the account with new msg
       let newAccount = account.addMsg(msg);
   
       // we calculate the new Merkle Root, based on the account changes
-      let newCommitment = path.calculateRoot(newAccount.hash());
+      let newTreeroot = path.calculateRoot(newAccount.hash());
   
-      this.commitment.set(newCommitment);
+      this.treeroot.set(newTreeroot);
   
       this.emitEvent('input-msg', msg);
     }

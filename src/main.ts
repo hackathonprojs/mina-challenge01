@@ -38,7 +38,7 @@ import { treeHeight, SpyMsg, Account, MyMerkleWitness } from './SpyMsg.js';
 const doProofs = true;
 
 // we need the initiate tree root in order to tell the contract about our off-chain storage
-let initialCommitment: Field = Field(0);
+let initialTreeroot: Field = Field(0);
 
 type Names = 'bob' | 'alice' | 'carol' | 'dave';
 
@@ -69,18 +69,18 @@ let Accounts: Map<string, Account> = new Map<Names, Account>(
 // create our eligible list as a merkle tree.  
 
 // we now need "wrap" the Merkle tree around our off-chain storage
-// we initialize a new Merkle Tree with height 8 
-const Tree = new MerkleTree(treeHeight);
+// we initialize a new Merkle tree with height 8 
+const tree = new MerkleTree(treeHeight);
 
-// right now 
-Tree.setLeaf(0n, Accounts.get('bob')!.hash());
-Tree.setLeaf(1n, Accounts.get('alice')!.hash());
-Tree.setLeaf(2n, Accounts.get('carol')!.hash());
-Tree.setLeaf(3n, Accounts.get('dave')!.hash());
+// set up the eligible list 
+tree.setLeaf(0n, Accounts.get('bob')!.hash());
+tree.setLeaf(1n, Accounts.get('alice')!.hash());
+tree.setLeaf(2n, Accounts.get('carol')!.hash());
+tree.setLeaf(3n, Accounts.get('dave')!.hash());
 
 
-// now that we got our accounts set up, we need the commitment to deploy our contract!
-initialCommitment = Tree.getRoot();
+// now that we got our accounts set up, we need the merkle treeroot to deploy our contract!
+initialTreeroot = tree.getRoot();
 
 let spyMsgZkApp = new SpyMsg(zkappAddress);
 console.log('Deploying SpyMsg..');
@@ -93,7 +93,7 @@ let tx = await Mina.transaction(feePayer, () => {
     amount: initialBalance,
   });
   spyMsgZkApp.deploy();
-  spyMsgZkApp.initState(initialCommitment);
+  spyMsgZkApp.initState(initialTreeroot);
 });
 await tx.prove();
 await tx.sign([feePayerKey, zkappKey]).send();
@@ -121,7 +121,7 @@ spyMsgZkApp.checkMsg(Field(0b101100)).assertFalse();
 
 async function inputMsg(name: Names, index: bigint, msg: number) {
   let account = Accounts.get(name)!;
-  let w = Tree.getWitness(index);
+  let w = tree.getWitness(index);
   let witness = new MyMerkleWitness(w);
 
   let tx = await Mina.transaction(feePayer, () => {
@@ -132,8 +132,8 @@ async function inputMsg(name: Names, index: bigint, msg: number) {
 
   // if the transaction was successful, we can update our off-chain storage as well
   account.msg = Field(msg);
-  Tree.setLeaf(index, account.hash());
-  spyMsgZkApp.commitment.get().assertEquals(Tree.getRoot());
+  tree.setLeaf(index, account.hash());
+  spyMsgZkApp.treeroot.get().assertEquals(tree.getRoot());
 }
 
 
