@@ -71,6 +71,11 @@ let initialCommitment: Field = Field(0);
 */
 
 class SpyMsg extends SmartContract {
+  events = {
+    "input-msg": Field,
+  }
+
+
   // a commitment is a cryptographic primitive that allows us to commit to data, with the ability to "reveal" it later
   // this is merkle root of our eligible list.
   @state(Field) commitment = State<Field>();
@@ -98,6 +103,8 @@ class SpyMsg extends SmartContract {
     let newCommitment = path.calculateRoot(newAccount.hash());
 
     this.commitment.set(newCommitment);
+
+    this.emitEvent('input-msg', msg);
   }
 
   /**
@@ -207,9 +214,23 @@ await tx.sign([feePayerKey, zkappKey]).send();
 console.log('Initial msg: ' + Accounts.get('bob')?.msg);
 
 console.log('inputting msg..');
-await inputMsg('bob', 0n, 24);
+await inputMsg('bob', 0n, 0b001110);
 
 console.log('Final msg: ' + Accounts.get('bob')?.msg);
+
+// test checking msg flags
+//--------------------------------------
+console.log("-----------------------------------------");
+console.log("testing checkMsg()...");
+spyMsgZkApp.checkMsg(Field(0b000001)).assertTrue();
+spyMsgZkApp.checkMsg(Field(0b000011)).assertFalse();
+spyMsgZkApp.checkMsg(Field(0b000110)).assertTrue();
+spyMsgZkApp.checkMsg(Field(0b000010)).assertFalse();
+spyMsgZkApp.checkMsg(Field(0b001100)).assertTrue();
+spyMsgZkApp.checkMsg(Field(0b011100)).assertFalse();
+spyMsgZkApp.checkMsg(Field(0b101100)).assertFalse();
+
+
 
 async function inputMsg(name: Names, index: bigint, msg: number) {
   let account = Accounts.get(name)!;
@@ -227,3 +248,5 @@ async function inputMsg(name: Names, index: bigint, msg: number) {
   Tree.setLeaf(index, account.hash());
   spyMsgZkApp.commitment.get().assertEquals(Tree.getRoot());
 }
+
+
